@@ -24,11 +24,19 @@ public final class LdapAuthenticatorConstants {
     public static final String DEFAULT_SERVICE_DESCRIPTION_LDAP_AUTHENTICATOR =
             "Default LDAP Authenticator Component";
 
+    /**
+     * The LDAP URL to connect to. (e.g. ldap://&lt;ldapDirectoryHostname&gt;:&lt;port&gt;)
+     */
     public static final String PROP_URL = "url";
 
     public static final String PROP_SYSTEM_USERNAME = "systemUsername";
 
     public static final String PROP_SYSTEM_PASSWORD = "systemPassword";
+
+    public static final String PROP_USER_DN_SUBSTITUTION_TOKEN = "userDnSubstitutionToken";
+
+    // The zero index currently means nothing, but could be utilized in the future for other substitution techniques.
+    public static final String DEFAULT_USER_DN_SUBSTITUTION_TOKEN = "{0}";
 
     public static final String PROP_USER_DN_TEMPLATE = "userDnTemplate";
 
@@ -37,21 +45,6 @@ public final class LdapAuthenticatorConstants {
     public static final String PROP_SEARCH_BASE = "searchBase";
 
     public static final String PROP_LOG_SERVICE = "logService.target";
-
-    // The zero index currently means nothing, but could be utilized in the future for other substitution techniques.
-    public static final String USERDN_SUBSTITUTION_TOKEN = "{0}";
-
-    public static final String DEFAULT_CONTEXT_FACTORY_CLASS_NAME = "com.sun.jndi.ldap.LdapCtxFactory";
-
-    public static final String DEFAULT_CONNECTION_POOLING_ENV_PROP = "com.sun.jndi.ldap.connect.pool";
-
-    public static final String DEFAULT_LDAP_READ_TIMEOUT_ENV_PROP = "com.sun.jndi.ldap.read.timeout";
-
-    public static final long DEFAULT_TIMEOUT_MS = 10000;
-
-    public static final String SIMPLE_AUTHENTICATION_MECHANISM = "simple";
-
-    public static final String REFERRAL_FOLLOW = "follow";
 
     private LdapAuthenticatorConstants() {
     }

@@ -50,6 +50,8 @@ import org.osgi.service.log.LogService;
         @Property(name = LdapAuthenticatorConstants.PROP_SYSTEM_PASSWORD),
         @Property(name = LdapAuthenticatorConstants.PROP_BASE_DN),
         @Property(name = LdapAuthenticatorConstants.PROP_SEARCH_BASE),
+        @Property(name = LdapAuthenticatorConstants.PROP_USER_DN_SUBSTITUTION_TOKEN,
+                value = LdapAuthenticatorConstants.DEFAULT_USER_DN_SUBSTITUTION_TOKEN),
         @Property(name = LdapAuthenticatorConstants.PROP_USER_DN_TEMPLATE),
         @Property(name = LdapAuthenticatorConstants.PROP_LOG_SERVICE)
 })
@@ -67,7 +69,7 @@ public class LdapAuthenticatorComponent implements Authenticator {
 
     private String userDnSuffix;
 
-    private LdapContextFactory ldapContextFactory;
+    private InitialLdapContextFactory initialLdapContextFactory;
 
     @Activate
     public void activate(final BundleContext context, final Map<String, Object> componentProperties)
@@ -82,16 +84,13 @@ public class LdapAuthenticatorComponent implements Authenticator {
                 getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_BASE_DN);
         searchBase =
                 getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_SEARCH_BASE);
+        String userDnSubstitutionToken =
+                getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_USER_DN_SUBSTITUTION_TOKEN);
         String userDnTemplate =
                 getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_USER_DN_TEMPLATE);
-        initUserDnPrefixAndSuffix(userDnTemplate);
+        initUserDnPrefixAndSuffix(userDnTemplate, userDnSubstitutionToken);
 
-        ldapContextFactory = new DefaultLdapContextFactory(url,
-                LdapAuthenticatorConstants.SIMPLE_AUTHENTICATION_MECHANISM,
-                systemUsername, systemPassword, true,
-                LdapAuthenticatorConstants.DEFAULT_CONTEXT_FACTORY_CLASS_NAME,
-                LdapAuthenticatorConstants.DEFAULT_TIMEOUT_MS,
-                LdapAuthenticatorConstants.REFERRAL_FOLLOW);
+        initialLdapContextFactory = new InitialLdapContextFactory(url, systemUsername, systemPassword);
     }
 
     @Override
@@ -101,7 +100,7 @@ public class LdapAuthenticatorComponent implements Authenticator {
             String userDn = userDnPrefix + cn + userDnSuffix;
 
             // if the LdapContext is created successfully, then the user is authenticated
-            ldapContextFactory.getLdapContext(userDn, credential);
+            initialLdapContextFactory.getLdapContext(userDn, credential);
 
             return Optional.of(userDn);
         } catch (NamingException e) {
@@ -119,65 +118,29 @@ public class LdapAuthenticatorComponent implements Authenticator {
         return String.valueOf(value);
     }
 
-    /**
-     * Sets the User Distinguished Name (DN) template to use when creating User DNs at runtime. A User DN is an LDAP
-     * fully-qualified unique user identifier which is required to establish a connection with the LDAP directory to
-     * authenticate users and query for authorization information. <h2>Usage</h2> User DN formats are unique to the LDAP
-     * directory's schema, and each environment differs - you will need to specify the format corresponding to your
-     * directory. You do this by specifying the full User DN as normal, but but you use a <b>{@code 0} </b> placeholder
-     * token in the string representing the location where the user's submitted principal (usually a username or uid)
-     * will be substituted at runtime.
-     * <p/>
-     * For example, if your directory uses an LDAP {@code uid} attribute to represent usernames, the User DN for the
-     * {@code jsmith} user may look like this:
-     * <p/>
-     *
-     * <pre>
-     * uid=jsmith,ou=users,dc=mycompany,dc=com
-     * </pre>
-     * <p/>
-     * in which case you would set this property with the following template value:
-     * <p/>
-     *
-     * <pre>
-     * uid=<b>{0}</b>,ou=users,dc=mycompany,dc=com
-     * </pre>
-     * <p/>
-     * If no template is configured, the raw {@code AuthenticationToken} {@link AuthenticationToken#getPrincipal()
-     * principal} will be used as the LDAP principal. This is likely incorrect as most LDAP directories expect a
-     * fully-qualified User DN as opposed to the raw uid or username. So, ensure you set this property to match your
-     * environment!
-     *
-     * @param template
-     *            the User Distinguished Name template to use for runtime substitution
-     * @throws IllegalArgumentException
-     *             if the template is null, empty, or does not contain the {@code 0} substitution token.
-     * @see LdapContextFactory#getLdapContext(Object,Object)
-     */
-    public void initUserDnPrefixAndSuffix(final String template) throws IllegalArgumentException {
-        if (template.trim().isEmpty()) {
-            throw new IllegalArgumentException("User DN template cannot be empty.");
+    public void initUserDnPrefixAndSuffix(final String userDnTemplate, final String userDnSubstitutionToken)
+            throws IllegalArgumentException {
+        if (userDnTemplate.trim().isEmpty()) {
+            throw new IllegalArgumentException("userDnTemplate cannot be empty.");
         }
-        int index = template.indexOf(LdapAuthenticatorConstants.USERDN_SUBSTITUTION_TOKEN);
+        if (userDnSubstitutionToken.trim().isEmpty()) {
+            throw new IllegalArgumentException("userDnSubstitutionToken cannot be empty.");
+        }
+        int index = userDnTemplate.indexOf(userDnSubstitutionToken);
         if (index < 0) {
-            throw new IllegalArgumentException("User DN template must contain the '" +
-                    LdapAuthenticatorConstants.USERDN_SUBSTITUTION_TOKEN
-                    + "' replacement token to understand where to " +
-                    "insert the runtime authentication principal.");
+            throw new IllegalArgumentException("userDnTemplate [" + userDnTemplate + "] must contain the '"
+                    + userDnSubstitutionToken + "' replacement token to understand where"
+                    + " to insert the runtime authentication principal.");
         }
-        String prefix = template.substring(0, index);
-        String suffix = template.substring(prefix.length()
-                + LdapAuthenticatorConstants.USERDN_SUBSTITUTION_TOKEN.length());
-
-        userDnPrefix = prefix;
-        userDnSuffix = suffix;
+        userDnPrefix = userDnTemplate.substring(0, index);
+        userDnSuffix = userDnTemplate.substring(userDnPrefix.length() + userDnSubstitutionToken.length());
     }
 
     private String queryCnByPrincipal(final Object principal) throws NamingException {
         LdapContext systemLdapContext = null;
         NamingEnumeration<SearchResult> namingEnumeration = null;
         try {
-            systemLdapContext = ldapContextFactory.getSystemLdapContext();
+            systemLdapContext = initialLdapContextFactory.getSystemLdapContext();
             namingEnumeration = systemLdapContext.search(baseDn, searchBase, new Object[] { principal }, null);
             if (!namingEnumeration.hasMoreElements()) {
                 throw new NamingException("No result for "

@@ -203,6 +203,10 @@ public class LdapAuthenticatorTestComponent {
     public void deactivate() throws Exception {
         ldapServer.stop();
         directoryService.shutdown();
+        logService.log(LogService.LOG_WARNING, "Waiting 35 seconds for the UnorderedThreadPoolExecutor to shutdown"
+                + " gracefully, it is instantiated in the LdapServer.start() method"
+                + " with default keep alive 30 seconds.");
+        Thread.sleep(35000);
     }
 
     private void lookup(final String rdn) {
