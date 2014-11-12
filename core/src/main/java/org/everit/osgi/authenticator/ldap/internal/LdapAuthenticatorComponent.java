@@ -35,7 +35,6 @@ import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
 import org.everit.osgi.authenticator.Authenticator;
 import org.everit.osgi.authenticator.ldap.LdapAuthenticatorConstants;
-import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;
 import org.osgi.service.cm.ConfigurationException;
 import org.osgi.service.log.LogService;
@@ -49,9 +48,9 @@ import org.osgi.service.log.LogService;
         @Property(name = LdapAuthenticatorConstants.PROP_SYSTEM_USERNAME),
         @Property(name = LdapAuthenticatorConstants.PROP_SYSTEM_PASSWORD),
         @Property(name = LdapAuthenticatorConstants.PROP_BASE_DN),
+        @Property(name = LdapAuthenticatorConstants.PROP_SUBSTITUTION_TOKEN,
+                value = LdapAuthenticatorConstants.DEFAULT_SUBSTITUTION_TOKEN),
         @Property(name = LdapAuthenticatorConstants.PROP_SEARCH_BASE),
-        @Property(name = LdapAuthenticatorConstants.PROP_USER_DN_SUBSTITUTION_TOKEN,
-                value = LdapAuthenticatorConstants.DEFAULT_USER_DN_SUBSTITUTION_TOKEN),
         @Property(name = LdapAuthenticatorConstants.PROP_USER_DN_TEMPLATE),
         @Property(name = LdapAuthenticatorConstants.PROP_LOG_SERVICE)
 })
@@ -72,8 +71,7 @@ public class LdapAuthenticatorComponent implements Authenticator {
     private InitialLdapContextFactory initialLdapContextFactory;
 
     @Activate
-    public void activate(final BundleContext context, final Map<String, Object> componentProperties)
-            throws ConfigurationException {
+    public void activate(final Map<String, Object> componentProperties) throws ConfigurationException {
         String url =
                 getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_URL);
         String systemUsername =
@@ -85,7 +83,7 @@ public class LdapAuthenticatorComponent implements Authenticator {
         searchBase =
                 getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_SEARCH_BASE);
         String userDnSubstitutionToken =
-                getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_USER_DN_SUBSTITUTION_TOKEN);
+                getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_SUBSTITUTION_TOKEN);
         String userDnTemplate =
                 getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_USER_DN_TEMPLATE);
         initUserDnPrefixAndSuffix(userDnTemplate, userDnSubstitutionToken);

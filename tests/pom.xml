@@ -111,8 +111,8 @@
                 <felix.cm.dir>${wrapper_home}/../configuration/configadmin</felix.cm.dir>
               </systemProperties>
               <vmOptions>
-                <vmOption>-Xdebug</vmOption>
-                <vmOption>-Xrunjdwp:server=y,transport=dt_socket,address=1044,suspend=n</vmOption>
+<!--                 <vmOption>-Xdebug</vmOption> -->
+<!--                 <vmOption>-Xrunjdwp:server=y,transport=dt_socket,address=1044,suspend=n</vmOption> -->
               </vmOptions>
             </environment>
           </environments>

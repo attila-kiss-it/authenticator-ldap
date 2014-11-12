@@ -33,10 +33,10 @@ public final class LdapAuthenticatorConstants {
 
     public static final String PROP_SYSTEM_PASSWORD = "systemPassword";
 
-    public static final String PROP_USER_DN_SUBSTITUTION_TOKEN = "userDnSubstitutionToken";
+    public static final String PROP_SUBSTITUTION_TOKEN = "substitutionToken";
 
     // The zero index currently means nothing, but could be utilized in the future for other substitution techniques.
-    public static final String DEFAULT_USER_DN_SUBSTITUTION_TOKEN = "{0}";
+    public static final String DEFAULT_SUBSTITUTION_TOKEN = "{0}";
 
     public static final String PROP_USER_DN_TEMPLATE = "userDnTemplate";
 
