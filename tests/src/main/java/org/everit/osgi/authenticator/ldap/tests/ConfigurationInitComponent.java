@@ -56,11 +56,9 @@ public class ConfigurationInitComponent {
         properties.put(LdapAuthenticatorConstants.PROP_URL, "ldap://localhost:" + ldapPortProvider.getPort());
         properties.put(LdapAuthenticatorConstants.PROP_SYSTEM_USERNAME, "uid=admin,ou=system");
         properties.put(LdapAuthenticatorConstants.PROP_SYSTEM_PASSWORD, "secret");
-        properties.put(LdapAuthenticatorConstants.PROP_BASE_DN, "ou=people,o=sevenSeas");
-        properties.put(LdapAuthenticatorConstants.PROP_SUBSTITUTION_TOKEN, "{0}");
-        properties.put(LdapAuthenticatorConstants.PROP_SEARCH_BASE, "mail={0}");
+        properties.put(LdapAuthenticatorConstants.PROP_USER_BASE_DN, "ou=people,o=sevenSeas");
+        properties.put(LdapAuthenticatorConstants.PROP_USER_SEARCH_BASE, "mail={0}");
         properties.put(LdapAuthenticatorConstants.PROP_USER_DN_TEMPLATE, "cn={0},ou=people,o=sevenSeas");
-        properties.put(LdapAuthenticatorConstants.PROP_LOG_SERVICE, "");
         configuration.update(properties);
     }
 

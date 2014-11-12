@@ -24,25 +24,17 @@ public final class LdapAuthenticatorConstants {
     public static final String DEFAULT_SERVICE_DESCRIPTION_LDAP_AUTHENTICATOR =
             "Default LDAP Authenticator Component";
 
-    /**
-     * The LDAP URL to connect to. (e.g. ldap://&lt;ldapDirectoryHostname&gt;:&lt;port&gt;)
-     */
     public static final String PROP_URL = "url";
 
     public static final String PROP_SYSTEM_USERNAME = "systemUsername";
 
     public static final String PROP_SYSTEM_PASSWORD = "systemPassword";
 
-    public static final String PROP_SUBSTITUTION_TOKEN = "substitutionToken";
+    public static final String PROP_USER_BASE_DN = "userBaseDn";
 
-    // The zero index currently means nothing, but could be utilized in the future for other substitution techniques.
-    public static final String DEFAULT_SUBSTITUTION_TOKEN = "{0}";
+    public static final String PROP_USER_SEARCH_BASE = "userSearchBase";
 
     public static final String PROP_USER_DN_TEMPLATE = "userDnTemplate";
-
-    public static final String PROP_BASE_DN = "baseDn";
-
-    public static final String PROP_SEARCH_BASE = "searchBase";
 
     public static final String PROP_LOG_SERVICE = "logService.target";
 

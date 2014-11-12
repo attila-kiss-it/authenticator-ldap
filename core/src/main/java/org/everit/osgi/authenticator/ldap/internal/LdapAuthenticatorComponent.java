@@ -47,22 +47,23 @@ import org.osgi.service.log.LogService;
         @Property(name = LdapAuthenticatorConstants.PROP_URL),
         @Property(name = LdapAuthenticatorConstants.PROP_SYSTEM_USERNAME),
         @Property(name = LdapAuthenticatorConstants.PROP_SYSTEM_PASSWORD),
-        @Property(name = LdapAuthenticatorConstants.PROP_BASE_DN),
-        @Property(name = LdapAuthenticatorConstants.PROP_SUBSTITUTION_TOKEN,
-                value = LdapAuthenticatorConstants.DEFAULT_SUBSTITUTION_TOKEN),
-        @Property(name = LdapAuthenticatorConstants.PROP_SEARCH_BASE),
+        @Property(name = LdapAuthenticatorConstants.PROP_USER_BASE_DN),
+        @Property(name = LdapAuthenticatorConstants.PROP_USER_SEARCH_BASE),
         @Property(name = LdapAuthenticatorConstants.PROP_USER_DN_TEMPLATE),
         @Property(name = LdapAuthenticatorConstants.PROP_LOG_SERVICE)
 })
 @Service
 public class LdapAuthenticatorComponent implements Authenticator {
 
+    // The zero index currently means nothing, but could be utilized in the future for other substitution techniques.
+    private static final String SUBSTITUTION_TOKEN = "{0}";
+
     @Reference(bind = "setLogService")
     private LogService logService;
 
-    private String searchBase;
+    private String userSearchBase;
 
-    private String baseDn;
+    private String userBaseDn;
 
     private String userDnPrefix;
 
@@ -78,15 +79,13 @@ public class LdapAuthenticatorComponent implements Authenticator {
                 getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_SYSTEM_USERNAME);
         String systemPassword =
                 getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_SYSTEM_PASSWORD);
-        baseDn =
-                getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_BASE_DN);
-        searchBase =
-                getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_SEARCH_BASE);
-        String userDnSubstitutionToken =
-                getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_SUBSTITUTION_TOKEN);
+        userBaseDn =
+                getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_USER_BASE_DN);
+        userSearchBase =
+                getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_USER_SEARCH_BASE);
         String userDnTemplate =
                 getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_USER_DN_TEMPLATE);
-        initUserDnPrefixAndSuffix(userDnTemplate, userDnSubstitutionToken);
+        initUserDnPrefixAndSuffix(userDnTemplate);
 
         initialLdapContextFactory = new InitialLdapContextFactory(url, systemUsername, systemPassword);
     }
@@ -116,22 +115,19 @@ public class LdapAuthenticatorComponent implements Authenticator {
         return String.valueOf(value);
     }
 
-    public void initUserDnPrefixAndSuffix(final String userDnTemplate, final String userDnSubstitutionToken)
+    public void initUserDnPrefixAndSuffix(final String userDnTemplate)
             throws IllegalArgumentException {
         if (userDnTemplate.trim().isEmpty()) {
             throw new IllegalArgumentException("userDnTemplate cannot be empty.");
         }
-        if (userDnSubstitutionToken.trim().isEmpty()) {
-            throw new IllegalArgumentException("userDnSubstitutionToken cannot be empty.");
-        }
-        int index = userDnTemplate.indexOf(userDnSubstitutionToken);
+        int index = userDnTemplate.indexOf(SUBSTITUTION_TOKEN);
         if (index < 0) {
             throw new IllegalArgumentException("userDnTemplate [" + userDnTemplate + "] must contain the '"
-                    + userDnSubstitutionToken + "' replacement token to understand where"
+                    + SUBSTITUTION_TOKEN + "' replacement token to understand where"
                     + " to insert the runtime authentication principal.");
         }
         userDnPrefix = userDnTemplate.substring(0, index);
-        userDnSuffix = userDnTemplate.substring(userDnPrefix.length() + userDnSubstitutionToken.length());
+        userDnSuffix = userDnTemplate.substring(userDnPrefix.length() + SUBSTITUTION_TOKEN.length());
     }
 
     private String queryCnByPrincipal(final Object principal) throws NamingException {
@@ -139,15 +135,15 @@ public class LdapAuthenticatorComponent implements Authenticator {
         NamingEnumeration<SearchResult> namingEnumeration = null;
         try {
             systemLdapContext = initialLdapContextFactory.getSystemLdapContext();
-            namingEnumeration = systemLdapContext.search(baseDn, searchBase, new Object[] { principal }, null);
+            namingEnumeration = systemLdapContext.search(userBaseDn, userSearchBase, new Object[] { principal }, null);
             if (!namingEnumeration.hasMoreElements()) {
-                throw new NamingException("No result for "
-                        + "baseDn [" + baseDn + "] searchBase [" + searchBase + "] with principal [" + principal + "]");
+                throw new NamingException("No result for userBaseDn [" + userBaseDn + "] userSearchBase ["
+                        + userSearchBase + "] with principal [" + principal + "]");
             }
             SearchResult searchResult = namingEnumeration.nextElement();
             if (namingEnumeration.hasMoreElements()) {
-                throw new NamingException(
-                        "More than one result for searchBase [" + searchBase + "] with principal [" + principal + "]");
+                throw new NamingException("More than one result for userSearchBase [" + userSearchBase
+                        + "] with principal [" + principal + "]");
             }
             Attributes attributes = searchResult.getAttributes();
             Attribute cnAttribute = attributes.get("cn");
