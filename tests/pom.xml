@@ -308,7 +308,7 @@
       <version>1.0.0</version>
     </dependency>
 
-    <!-- LDAP -->
+    <!-- Apache Directory Server - LDAP -->
     <dependency>
       <groupId>org.apache.directory.server</groupId>
       <artifactId>apacheds-protocol-ldap</artifactId>
@@ -339,10 +339,15 @@
       <artifactId>api-ldap-extras-codec</artifactId>
       <version>1.0.0-M24</version>
     </dependency>
+    <!-- !!! TODO!!! -->
+    <!-- The mavibot SNAPSHOT dependency must be built manually until its not fixed and released to maven central: -->
+    <!-- 1. Checkout its source from http://svn.apache.org/repos/asf/directory/mavibot/trunk -->
+    <!-- 2. Apply the patch attached to issue https://issues.apache.org/jira/browse/MAVIBOT-45 -->
+    <!-- 3. Build: mvn clean install -DskipTests -->
     <dependency>
       <groupId>org.apache.directory.mavibot</groupId>
       <artifactId>mavibot</artifactId>
-      <version>1.0.0-M6-SNAPSHOT</version>
+      <version>1.0.0-M7-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>org.apache.servicemix.bundles</groupId>
@@ -366,16 +371,12 @@
     </dependency>
     <!-- LDAP end -->
 
+    <!-- tested part -->
     <dependency>
       <groupId>org.everit.osgi</groupId>
       <artifactId>org.everit.osgi.authenticator.ldap</artifactId>
       <version>1.0.0-SNAPSHOT</version>
     </dependency>
-<!--     <dependency> -->
-<!--       <groupId>org.everit.osgi</groupId> -->
-<!--       <artifactId>org.everit.osgi.webconsole.threadviewer</artifactId> -->
-<!--       <version>0.1.0-SNAPSHOT</version> -->
-<!--     </dependency> -->
 
   </dependencies>
 
