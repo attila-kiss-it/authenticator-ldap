@@ -44,21 +44,21 @@ public class InitialLdapContextFactory {
 
     private final String systemUserDn;
 
-    private final String systemPassword;
+    private final String systemUserPassword;
 
-    public InitialLdapContextFactory(final String url, final String systemUserDn, final String systemPassword) {
+    public InitialLdapContextFactory(final String url, final String systemUserDn, final String systemUserPassword) {
         this.url = url;
         this.systemUserDn = systemUserDn;
-        this.systemPassword = systemPassword;
+        this.systemUserPassword = systemUserPassword;
     }
 
-    private Hashtable<String, Object> createEnvironment(final String userDn, final String credential)
+    private Hashtable<String, Object> createEnvironment(final String userDn, final String userPassword)
             throws AuthenticationException {
         Hashtable<String, Object> environment = new Hashtable<>();
         environment.put(Context.PROVIDER_URL, url);
         environment.put(Context.SECURITY_AUTHENTICATION, SIMPLE_AUTHENTICATION_MECHANISM);
         environment.put(Context.SECURITY_PRINCIPAL, userDn);
-        environment.put(Context.SECURITY_CREDENTIALS, credential);
+        environment.put(Context.SECURITY_CREDENTIALS, userPassword);
         environment.put(Context.INITIAL_CONTEXT_FACTORY, DEFAULT_CONTEXT_FACTORY_CLASS_NAME);
         environment.put(DEFAULT_LDAP_READ_TIMEOUT_ENV_PROP, DEFAULT_TIMEOUT_MS);
         environment.put(Context.REFERRAL, REFERRAL_FOLLOW);
@@ -72,7 +72,7 @@ public class InitialLdapContextFactory {
     }
 
     public LdapContext getSystemLdapContext() throws NamingException {
-        return getLdapContext(systemUserDn, systemPassword);
+        return getLdapContext(systemUserDn, systemUserPassword);
     }
 
 }

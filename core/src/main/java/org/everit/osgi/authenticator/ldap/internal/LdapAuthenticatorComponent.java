@@ -45,8 +45,8 @@ import org.osgi.service.log.LogService;
         @Property(name = Constants.SERVICE_DESCRIPTION, propertyPrivate = false,
                 value = LdapAuthenticatorConstants.DEFAULT_SERVICE_DESCRIPTION_LDAP_AUTHENTICATOR),
         @Property(name = LdapAuthenticatorConstants.PROP_URL),
-        @Property(name = LdapAuthenticatorConstants.PROP_SYSTEM_USERNAME),
-        @Property(name = LdapAuthenticatorConstants.PROP_SYSTEM_PASSWORD),
+        @Property(name = LdapAuthenticatorConstants.PROP_SYSTEM_USER_DN),
+        @Property(name = LdapAuthenticatorConstants.PROP_SYSTEM_USER_PASSWORD),
         @Property(name = LdapAuthenticatorConstants.PROP_USER_BASE_DN),
         @Property(name = LdapAuthenticatorConstants.PROP_USER_SEARCH_BASE),
         @Property(name = LdapAuthenticatorConstants.PROP_USER_DN_TEMPLATE),
@@ -75,10 +75,10 @@ public class LdapAuthenticatorComponent implements Authenticator {
     public void activate(final Map<String, Object> componentProperties) throws ConfigurationException {
         String url =
                 getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_URL);
-        String systemUsername =
-                getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_SYSTEM_USERNAME);
-        String systemPassword =
-                getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_SYSTEM_PASSWORD);
+        String systemUserDn =
+                getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_SYSTEM_USER_DN);
+        String systemUserPassword =
+                getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_SYSTEM_USER_PASSWORD);
         userBaseDn =
                 getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_USER_BASE_DN);
         userSearchBase =
@@ -87,7 +87,7 @@ public class LdapAuthenticatorComponent implements Authenticator {
                 getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_USER_DN_TEMPLATE);
         initUserDnPrefixAndSuffix(userDnTemplate);
 
-        initialLdapContextFactory = new InitialLdapContextFactory(url, systemUsername, systemPassword);
+        initialLdapContextFactory = new InitialLdapContextFactory(url, systemUserDn, systemUserPassword);
     }
 
     @Override

@@ -26,9 +26,9 @@ public final class LdapAuthenticatorConstants {
 
     public static final String PROP_URL = "url";
 
-    public static final String PROP_SYSTEM_USERNAME = "systemUsername";
+    public static final String PROP_SYSTEM_USER_DN = "systemUserDn";
 
-    public static final String PROP_SYSTEM_PASSWORD = "systemPassword";
+    public static final String PROP_SYSTEM_USER_PASSWORD = "systemUserPassword";
 
     public static final String PROP_USER_BASE_DN = "userBaseDn";
 
