@@ -1,18 +1,17 @@
-/**
- * This file is part of Everit - LDAP Authenticator tests.
+/*
+ * Copyright (C) 2011 Everit Kft. (http://www.everit.org)
  *
- * Everit - LDAP Authenticator tests is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * Everit - LDAP Authenticator tests is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ *         http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU Lesser General Public License
- * along with Everit - LDAP Authenticator tests.  If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.everit.osgi.authenticator.ldap.tests;
 
@@ -33,47 +32,50 @@ import org.osgi.service.cm.ConfigurationAdmin;
 
 @Component(name = "ConfigurationInit", immediate = true)
 @Properties({
-        @Property(name = "configurationAdmin.target"),
-        @Property(name = "ldapPortProvider.target")
+    @Property(name = "configurationAdmin.target"),
+    @Property(name = "ldapPortProvider.target")
 })
 @Service(value = ConfigurationInitComponent.class)
 public class ConfigurationInitComponent {
 
-    @Reference(bind = "setConfigurationAdmin")
-    private ConfigurationAdmin configurationAdmin;
+  @Reference(bind = "setConfigurationAdmin")
+  private ConfigurationAdmin configurationAdmin;
 
-    @Reference(bind = "setLdapPortProvider")
-    private LdapPortProvider ldapPortProvider;
+  private String ldapAuthenticatorConfigurationPid;
 
-    private String ldapAuthenticatorConfigurationPid;
+  @Reference(bind = "setLdapPortProvider")
+  private LdapPortProvider ldapPortProvider;
 
-    @Activate
-    public void activate() throws IOException {
-        Configuration configuration = configurationAdmin.createFactoryConfiguration(
-                LdapAuthenticatorConstants.SERVICE_FACTORYPID_LDAP_AUTHENTICATOR, null);
-        ldapAuthenticatorConfigurationPid = configuration.getPid();
-        Dictionary<String, String> properties = new Hashtable<>();
-        properties.put(LdapAuthenticatorConstants.PROP_URL, "ldap://localhost:" + ldapPortProvider.getPort());
-        properties.put(LdapAuthenticatorConstants.PROP_SYSTEM_USER_DN, "uid=admin,ou=system");
-        properties.put(LdapAuthenticatorConstants.PROP_SYSTEM_USER_PASSWORD, "secret");
-        properties.put(LdapAuthenticatorConstants.PROP_USER_BASE_DN, "ou=people,o=sevenSeas");
-        properties.put(LdapAuthenticatorConstants.PROP_USER_SEARCH_BASE, "mail={0}");
-        properties.put(LdapAuthenticatorConstants.PROP_USER_DN_TEMPLATE, "cn={0},ou=people,o=sevenSeas");
-        configuration.update(properties);
-    }
+  @Activate
+  public void activate() throws IOException {
+    Configuration configuration = configurationAdmin.createFactoryConfiguration(
+        LdapAuthenticatorConstants.SERVICE_FACTORYPID_LDAP_AUTHENTICATOR, null);
+    ldapAuthenticatorConfigurationPid = configuration.getPid();
+    Dictionary<String, String> properties = new Hashtable<>();
+    properties.put(LdapAuthenticatorConstants.PROP_URL,
+        "ldap://localhost:" + ldapPortProvider.getPort());
+    properties.put(LdapAuthenticatorConstants.PROP_SYSTEM_USER_DN, "uid=admin,ou=system");
+    properties.put(LdapAuthenticatorConstants.PROP_SYSTEM_USER_PASSWORD, "secret");
+    properties.put(LdapAuthenticatorConstants.PROP_USER_BASE_DN, "ou=people,o=sevenSeas");
+    properties.put(LdapAuthenticatorConstants.PROP_USER_SEARCH_BASE, "mail={0}");
+    properties
+        .put(LdapAuthenticatorConstants.PROP_USER_DN_TEMPLATE, "cn={0},ou=people,o=sevenSeas");
+    configuration.update(properties);
+  }
 
-    @Deactivate
-    public void deactivate() throws IOException {
-        Configuration configuration = configurationAdmin.getConfiguration(ldapAuthenticatorConfigurationPid);
-        configuration.delete();
-    }
+  @Deactivate
+  public void deactivate() throws IOException {
+    Configuration configuration = configurationAdmin
+        .getConfiguration(ldapAuthenticatorConfigurationPid);
+    configuration.delete();
+  }
 
-    public void setConfigurationAdmin(final ConfigurationAdmin configurationAdmin) {
-        this.configurationAdmin = configurationAdmin;
-    }
+  public void setConfigurationAdmin(final ConfigurationAdmin configurationAdmin) {
+    this.configurationAdmin = configurationAdmin;
+  }
 
-    public void setLdapPortProvider(final LdapPortProvider ldapPortProvider) {
-        this.ldapPortProvider = ldapPortProvider;
-    }
+  public void setLdapPortProvider(final LdapPortProvider ldapPortProvider) {
+    this.ldapPortProvider = ldapPortProvider;
+  }
 
 }

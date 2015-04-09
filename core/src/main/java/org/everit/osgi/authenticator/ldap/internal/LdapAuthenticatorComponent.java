@@ -1,18 +1,17 @@
-/**
- * This file is part of Everit - LDAP Authenticator.
+/*
+ * Copyright (C) 2011 Everit Kft. (http://www.everit.biz)
  *
- * Everit - LDAP Authenticator is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * Everit - LDAP Authenticator is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ *         http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU Lesser General Public License
- * along with Everit - LDAP Authenticator.  If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.everit.osgi.authenticator.ldap.internal;
 
@@ -39,135 +38,148 @@ import org.osgi.framework.Constants;
 import org.osgi.service.cm.ConfigurationException;
 import org.osgi.service.log.LogService;
 
-@Component(name = LdapAuthenticatorConstants.SERVICE_FACTORYPID_LDAP_AUTHENTICATOR, metatype = true,
-        configurationFactory = true, policy = ConfigurationPolicy.REQUIRE)
+/**
+ * An {@link Authenticator} that authenticates users on LDAP protocol.
+ */
+@Component(name = LdapAuthenticatorConstants.SERVICE_FACTORYPID_LDAP_AUTHENTICATOR,
+    metatype = true,
+    configurationFactory = true, policy = ConfigurationPolicy.REQUIRE)
 @Properties({
-        @Property(name = Constants.SERVICE_DESCRIPTION, propertyPrivate = false,
-                value = LdapAuthenticatorConstants.DEFAULT_SERVICE_DESCRIPTION_LDAP_AUTHENTICATOR),
-        @Property(name = LdapAuthenticatorConstants.PROP_URL),
-        @Property(name = LdapAuthenticatorConstants.PROP_SYSTEM_USER_DN),
-        @Property(name = LdapAuthenticatorConstants.PROP_SYSTEM_USER_PASSWORD),
-        @Property(name = LdapAuthenticatorConstants.PROP_USER_BASE_DN),
-        @Property(name = LdapAuthenticatorConstants.PROP_USER_SEARCH_BASE),
-        @Property(name = LdapAuthenticatorConstants.PROP_USER_DN_TEMPLATE),
-        @Property(name = LdapAuthenticatorConstants.PROP_LOG_SERVICE)
+    @Property(name = Constants.SERVICE_DESCRIPTION, propertyPrivate = false,
+        value = LdapAuthenticatorConstants.DEFAULT_SERVICE_DESCRIPTION_LDAP_AUTHENTICATOR),
+    @Property(name = LdapAuthenticatorConstants.PROP_URL),
+    @Property(name = LdapAuthenticatorConstants.PROP_SYSTEM_USER_DN),
+    @Property(name = LdapAuthenticatorConstants.PROP_SYSTEM_USER_PASSWORD),
+    @Property(name = LdapAuthenticatorConstants.PROP_USER_BASE_DN),
+    @Property(name = LdapAuthenticatorConstants.PROP_USER_SEARCH_BASE),
+    @Property(name = LdapAuthenticatorConstants.PROP_USER_DN_TEMPLATE),
+    @Property(name = LdapAuthenticatorConstants.PROP_LOG_SERVICE)
 })
 @Service
 public class LdapAuthenticatorComponent implements Authenticator {
 
-    // The zero index currently means nothing, but could be utilized in the future for other substitution techniques.
-    private static final String SUBSTITUTION_TOKEN = "{0}";
+  // The zero index currently means nothing, but could be utilized in the future for other
+  // substitution techniques.
+  private static final String SUBSTITUTION_TOKEN = "{0}";
 
-    @Reference(bind = "setLogService")
-    private LogService logService;
+  private InitialLdapContextFactory initialLdapContextFactory;
 
-    private String userSearchBase;
+  @Reference(bind = "setLogService")
+  private LogService logService;
 
-    private String userBaseDn;
+  private String userBaseDn;
 
-    private String userDnPrefix;
+  private String userDnPrefix;
 
-    private String userDnSuffix;
+  private String userDnSuffix;
 
-    private InitialLdapContextFactory initialLdapContextFactory;
+  private String userSearchBase;
 
-    @Activate
-    public void activate(final Map<String, Object> componentProperties) throws ConfigurationException {
-        String url =
-                getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_URL);
-        String systemUserDn =
-                getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_SYSTEM_USER_DN);
-        String systemUserPassword =
-                getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_SYSTEM_USER_PASSWORD);
-        userBaseDn =
-                getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_USER_BASE_DN);
-        userSearchBase =
-                getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_USER_SEARCH_BASE);
-        String userDnTemplate =
-                getStringProperty(componentProperties, LdapAuthenticatorConstants.PROP_USER_DN_TEMPLATE);
-        initUserDnPrefixAndSuffix(userDnTemplate);
+  /**
+   * Initializes the OSGi component based on the component configuration.
+   */
+  @Activate
+  public void activate(final Map<String, Object> componentProperties)
+      throws ConfigurationException {
+    String url = getStringProperty(
+        componentProperties, LdapAuthenticatorConstants.PROP_URL);
+    String systemUserDn = getStringProperty(
+        componentProperties, LdapAuthenticatorConstants.PROP_SYSTEM_USER_DN);
+    String systemUserPassword = getStringProperty(
+        componentProperties, LdapAuthenticatorConstants.PROP_SYSTEM_USER_PASSWORD);
+    userBaseDn = getStringProperty(
+        componentProperties, LdapAuthenticatorConstants.PROP_USER_BASE_DN);
+    userSearchBase = getStringProperty(
+        componentProperties, LdapAuthenticatorConstants.PROP_USER_SEARCH_BASE);
+    String userDnTemplate = getStringProperty(
+        componentProperties, LdapAuthenticatorConstants.PROP_USER_DN_TEMPLATE);
+    initUserDnPrefixAndSuffix(userDnTemplate);
 
-        initialLdapContextFactory = new InitialLdapContextFactory(url, systemUserDn, systemUserPassword);
+    initialLdapContextFactory =
+        new InitialLdapContextFactory(url, systemUserDn, systemUserPassword);
+  }
+
+  @Override
+  public Optional<String> authenticate(final String principal, final String credential) {
+    try {
+      String cn = queryCnByPrincipal(principal);
+      String userDn = userDnPrefix + cn + userDnSuffix;
+
+      // if the LdapContext is created successfully, then the user is authenticated
+      initialLdapContextFactory.createLdapContext(userDn, credential);
+
+      return Optional.of(userDn);
+    } catch (NamingException e) {
+      logService.log(LogService.LOG_WARNING, "Failed to query cn", e);
+      return Optional.empty();
     }
+  }
 
-    @Override
-    public Optional<String> authenticate(final String principal, final String credential) {
-        try {
-            String cn = queryCnByPrincipal(principal);
-            String userDn = userDnPrefix + cn + userDnSuffix;
+  private String getStringProperty(final Map<String, Object> componentProperties,
+      final String propertyName)
+      throws ConfigurationException {
+    Object value = componentProperties.get(propertyName);
+    if (value == null) {
+      throw new ConfigurationException(propertyName, "property not defined");
+    }
+    return String.valueOf(value);
+  }
 
-            // if the LdapContext is created successfully, then the user is authenticated
-            initialLdapContextFactory.getLdapContext(userDn, credential);
+  private void initUserDnPrefixAndSuffix(final String userDnTemplate)
+      throws IllegalArgumentException {
+    if (userDnTemplate.trim().isEmpty()) {
+      throw new IllegalArgumentException("userDnTemplate cannot be empty.");
+    }
+    int index = userDnTemplate.indexOf(SUBSTITUTION_TOKEN);
+    if (index < 0) {
+      throw new IllegalArgumentException("userDnTemplate [" + userDnTemplate
+          + "] must contain the '"
+          + SUBSTITUTION_TOKEN + "' replacement token to understand where"
+          + " to insert the runtime authentication principal.");
+    }
+    userDnPrefix = userDnTemplate.substring(0, index);
+    userDnSuffix = userDnTemplate.substring(userDnPrefix.length() + SUBSTITUTION_TOKEN.length());
+  }
 
-            return Optional.of(userDn);
-        } catch (NamingException e) {
-            logService.log(LogService.LOG_WARNING, "Failed to query cn", e);
-            return Optional.empty();
+  private String queryCnByPrincipal(final Object principal) throws NamingException {
+    LdapContext systemLdapContext = null;
+    NamingEnumeration<SearchResult> namingEnumeration = null;
+    try {
+      systemLdapContext = initialLdapContextFactory.createSystemLdapContext();
+      namingEnumeration = systemLdapContext.search(userBaseDn, userSearchBase,
+          new Object[] { principal }, null);
+      if (!namingEnumeration.hasMoreElements()) {
+        throw new NamingException("No result for userBaseDn [" + userBaseDn + "] userSearchBase ["
+            + userSearchBase + "] with principal [" + principal + "]");
+      }
+      SearchResult searchResult = namingEnumeration.nextElement();
+      if (namingEnumeration.hasMoreElements()) {
+        throw new NamingException("More than one result for userSearchBase [" + userSearchBase
+            + "] with principal [" + principal + "]");
+      }
+      Attributes attributes = searchResult.getAttributes();
+      Attribute cnAttribute = attributes.get("cn");
+      return (String) cnAttribute.get();
+    } finally {
+      try {
+        if (systemLdapContext != null) {
+          systemLdapContext.close();
         }
-    }
-
-    private String getStringProperty(final Map<String, Object> componentProperties, final String propertyName)
-            throws ConfigurationException {
-        Object value = componentProperties.get(propertyName);
-        if (value == null) {
-            throw new ConfigurationException(propertyName, "property not defined");
+      } catch (NamingException e) {
+        logService.log(LogService.LOG_ERROR, "Exception while closing LDAP context. ", e);
+      }
+      try {
+        if (namingEnumeration != null) {
+          namingEnumeration.close();
         }
-        return String.valueOf(value);
+      } catch (Exception e) {
+        logService.log(LogService.LOG_ERROR, "Failed to close naming enumeration", e);
+      }
     }
+  }
 
-    public void initUserDnPrefixAndSuffix(final String userDnTemplate)
-            throws IllegalArgumentException {
-        if (userDnTemplate.trim().isEmpty()) {
-            throw new IllegalArgumentException("userDnTemplate cannot be empty.");
-        }
-        int index = userDnTemplate.indexOf(SUBSTITUTION_TOKEN);
-        if (index < 0) {
-            throw new IllegalArgumentException("userDnTemplate [" + userDnTemplate + "] must contain the '"
-                    + SUBSTITUTION_TOKEN + "' replacement token to understand where"
-                    + " to insert the runtime authentication principal.");
-        }
-        userDnPrefix = userDnTemplate.substring(0, index);
-        userDnSuffix = userDnTemplate.substring(userDnPrefix.length() + SUBSTITUTION_TOKEN.length());
-    }
-
-    private String queryCnByPrincipal(final Object principal) throws NamingException {
-        LdapContext systemLdapContext = null;
-        NamingEnumeration<SearchResult> namingEnumeration = null;
-        try {
-            systemLdapContext = initialLdapContextFactory.getSystemLdapContext();
-            namingEnumeration = systemLdapContext.search(userBaseDn, userSearchBase, new Object[] { principal }, null);
-            if (!namingEnumeration.hasMoreElements()) {
-                throw new NamingException("No result for userBaseDn [" + userBaseDn + "] userSearchBase ["
-                        + userSearchBase + "] with principal [" + principal + "]");
-            }
-            SearchResult searchResult = namingEnumeration.nextElement();
-            if (namingEnumeration.hasMoreElements()) {
-                throw new NamingException("More than one result for userSearchBase [" + userSearchBase
-                        + "] with principal [" + principal + "]");
-            }
-            Attributes attributes = searchResult.getAttributes();
-            Attribute cnAttribute = attributes.get("cn");
-            return (String) cnAttribute.get();
-        } finally {
-            try {
-                if (systemLdapContext != null) {
-                    systemLdapContext.close();
-                }
-            } catch (NamingException e) {
-                logService.log(LogService.LOG_ERROR, "Exception while closing LDAP context. ", e);
-            }
-            try {
-                if (namingEnumeration != null) {
-                    namingEnumeration.close();
-                }
-            } catch (Exception e) {
-                logService.log(LogService.LOG_ERROR, "Failed to close naming enumeration", e);
-            }
-        }
-    }
-
-    public void setLogService(final LogService logService) {
-        this.logService = logService;
-    }
+  public void setLogService(final LogService logService) {
+    this.logService = logService;
+  }
 
 }

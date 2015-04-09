@@ -1,18 +1,17 @@
-/**
- * This file is part of Everit - LDAP Authenticator tests.
+/*
+ * Copyright (C) 2011 Everit Kft. (http://www.everit.org)
  *
- * Everit - LDAP Authenticator tests is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
- * Everit - LDAP Authenticator tests is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
+ *         http://www.apache.org/licenses/LICENSE-2.0
  *
- * You should have received a copy of the GNU Lesser General Public License
- * along with Everit - LDAP Authenticator tests.  If not, see <http://www.gnu.org/licenses/>.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.everit.osgi.authenticator.ldap.tests;
 
@@ -58,175 +57,180 @@ import org.osgi.service.log.LogService;
 
 @Component(name = "ApacheDirectoryServer", immediate = true)
 @Properties({
-        @Property(name = "logService.target")
+    @Property(name = "logService.target")
 })
 @Service
 public class ApacheDirectoryServerComponent implements LdapPortProvider {
 
-    @Reference(bind = "setLogService")
-    private LogService logService;
+  private DirectoryService directoryService;
 
-    private DirectoryService directoryService;
+  private LdapServer ldapServer;
 
-    private LdapServer ldapServer;
+  @Reference(bind = "setLogService")
+  private LogService logService;
 
-    private int port;
+  private int port;
 
-    @Activate
-    public void activate() throws Exception {
-        // Initialize the LDAP service
-        directoryService = new DefaultDirectoryService();
-        directoryService.setInstanceId("Test Directory Service");
+  @Activate
+  public void activate() throws Exception {
+    // Initialize the LDAP service
+    directoryService = new DefaultDirectoryService();
+    directoryService.setInstanceId("Test Directory Service");
 
-        // Disable the ChangeLog system
-        directoryService.getChangeLog().setEnabled(false);
-        directoryService.setShutdownHookEnabled(false);
-        directoryService.setExitVmOnShutdown(false);
-        directoryService.setDenormalizeOpAttrsEnabled(true);
-        InstanceLayout instanceLayout = new InstanceLayout(Files.createTempDirectory("directoryService").toFile());
-        directoryService.setInstanceLayout(instanceLayout);
-        CacheService cacheService = new CacheService(CacheManager.create());
-        directoryService.setCacheService(cacheService);
+    // Disable the ChangeLog system
+    directoryService.getChangeLog().setEnabled(false);
+    directoryService.setShutdownHookEnabled(false);
+    directoryService.setExitVmOnShutdown(false);
+    directoryService.setDenormalizeOpAttrsEnabled(true);
+    InstanceLayout instanceLayout = new InstanceLayout(Files
+        .createTempDirectory("directoryService").toFile());
+    directoryService.setInstanceLayout(instanceLayout);
+    CacheService cacheService = new CacheService(CacheManager.create());
+    directoryService.setCacheService(cacheService);
 
-        SchemaManager schemaManager = new DefaultSchemaManager();
-        directoryService.setSchemaManager(schemaManager);
+    SchemaManager schemaManager = new DefaultSchemaManager();
+    directoryService.setSchemaManager(schemaManager);
 
-        Cache dnCache = new Cache(new CacheConfiguration("wrapped", 100));
-        CacheManager cacheManager = CacheManager.newInstance();
-        dnCache.setCacheManager(cacheManager);
-        dnCache.initialise();
-        DnFactory dnFactory = new DefaultDnFactory(schemaManager, dnCache);
+    Cache dnCache = new Cache(new CacheConfiguration("wrapped", 100));
+    CacheManager cacheManager = CacheManager.newInstance();
+    dnCache.setCacheManager(cacheManager);
+    dnCache.initialise();
+    DnFactory dnFactory = new DefaultDnFactory(schemaManager, dnCache);
 
-        JdbmPartition wrapped = new JdbmPartition(schemaManager, dnFactory);
-        wrapped.setPartitionPath(Files.createTempDirectory("wrappedPartition").toFile().toURI());
-        wrapped.setId("wrapped");
+    JdbmPartition wrapped = new JdbmPartition(schemaManager, dnFactory);
+    wrapped.setPartitionPath(Files.createTempDirectory("wrappedPartition").toFile().toURI());
+    wrapped.setId("wrapped");
 
-        SchemaPartition schemaPartition = new SchemaPartition(schemaManager);
-        schemaPartition.setWrappedPartition(wrapped);
-        directoryService.setSchemaPartition(schemaPartition);
+    SchemaPartition schemaPartition = new SchemaPartition(schemaManager);
+    schemaPartition.setWrappedPartition(wrapped);
+    directoryService.setSchemaPartition(schemaPartition);
 
-        JdbmPartition systemPartition = new JdbmPartition(schemaManager, dnFactory);
-        systemPartition.setId("system");
-        systemPartition.setSuffixDn(dnFactory.create(ServerDNConstants.SYSTEM_DN));
-        systemPartition.setPartitionPath(Files.createTempDirectory(ServerDNConstants.SYSTEM_DN).toFile().toURI());
-        directoryService.setSystemPartition(systemPartition);
+    JdbmPartition systemPartition = new JdbmPartition(schemaManager, dnFactory);
+    systemPartition.setId("system");
+    systemPartition.setSuffixDn(dnFactory.create(ServerDNConstants.SYSTEM_DN));
+    systemPartition.setPartitionPath(Files.createTempDirectory(ServerDNConstants.SYSTEM_DN)
+        .toFile().toURI());
+    directoryService.setSystemPartition(systemPartition);
 
-        directoryService.startup();
+    directoryService.startup();
 
-        Dn sevenSeasDn = dnFactory.create(LdapTestConstants.O_SEVEN_SEAS);
-        JdbmPartition sevenSeasPartition = addPartition(schemaManager, dnFactory, "sevenSeas", sevenSeasDn);
-        addIndex(sevenSeasPartition, "mail");
-        if (!directoryService.getAdminSession().exists(sevenSeasDn)) {
-            Entry sevenSeasEntry = directoryService.newEntry(sevenSeasDn);
-            sevenSeasEntry.add(SchemaConstants.OBJECT_CLASS_AT,
-                    SchemaConstants.TOP_OC, SchemaConstants.ORGANIZATION_OC);
-            sevenSeasEntry.add(SchemaConstants.O_AT,
-                    "sevenSeas");
-            directoryService.getAdminSession().add(sevenSeasEntry);
-        }
-
-        Dn peopleDn = dnFactory.create(LdapTestConstants.OU_PEOPLE);
-        if (!directoryService.getAdminSession().exists(peopleDn)) {
-            Entry peopleEntry = directoryService.newEntry(peopleDn);
-            peopleEntry.add(SchemaConstants.OBJECT_CLASS_AT,
-                    SchemaConstants.TOP_OC, SchemaConstants.ORGANIZATIONAL_UNIT_OC);
-            peopleEntry.add(SchemaConstants.OU_AT,
-                    "people");
-            directoryService.getAdminSession().add(peopleEntry);
-        }
-
-        Dn fooDn = dnFactory.create(LdapTestConstants.CN_FOO);
-        if (!directoryService.getAdminSession().exists(fooDn)) {
-            Entry fooEntry = directoryService.newEntry(fooDn);
-            fooEntry.add(SchemaConstants.OBJECT_CLASS_AT,
-                    SchemaConstants.TOP_OC, SchemaConstants.PERSON_OC, SchemaConstants.ORGANIZATIONAL_PERSON_OC,
-                    SchemaConstants.INET_ORG_PERSON_OC);
-            fooEntry.add(SchemaConstants.CN_AT, "foo");
-            fooEntry.add(SchemaConstants.SN_AT, "Foo");
-            fooEntry.add("mail", LdapTestConstants.FOO_MAIL);
-            fooEntry.add(SchemaConstants.USER_PASSWORD_AT, LdapTestConstants.FOO_CREDENTIAL);
-            directoryService.getAdminSession().add(fooEntry);
-        }
-
-        ldapServer = new LdapServer();
-        ldapServer.setDirectoryService(directoryService);
-
-        Transport ldapTransport = new TcpTransport(0);
-        ldapServer.setTransports(ldapTransport);
-
-        ldapServer.start();
-
-        port = getTcpTransportPort();
-
-        checkLdapEntries();
+    Dn sevenSeasDn = dnFactory.create(LdapTestConstants.O_SEVEN_SEAS);
+    JdbmPartition sevenSeasPartition = addPartition(schemaManager, dnFactory, "sevenSeas",
+        sevenSeasDn);
+    addIndex(sevenSeasPartition, "mail");
+    if (!directoryService.getAdminSession().exists(sevenSeasDn)) {
+      Entry sevenSeasEntry = directoryService.newEntry(sevenSeasDn);
+      sevenSeasEntry.add(SchemaConstants.OBJECT_CLASS_AT,
+          SchemaConstants.TOP_OC, SchemaConstants.ORGANIZATION_OC);
+      sevenSeasEntry.add(SchemaConstants.O_AT,
+          "sevenSeas");
+      directoryService.getAdminSession().add(sevenSeasEntry);
     }
 
-    private void addIndex(final JdbmPartition partition, final String... attrs) {
-        Set<Index<?, String>> indexedAttributes = new HashSet<Index<?, String>>();
-        for (String attribute : attrs) {
-            indexedAttributes.add(new JdbmIndex<String>(attribute, false));
-        }
-        partition.setIndexedAttributes(indexedAttributes);
+    Dn peopleDn = dnFactory.create(LdapTestConstants.OU_PEOPLE);
+    if (!directoryService.getAdminSession().exists(peopleDn)) {
+      Entry peopleEntry = directoryService.newEntry(peopleDn);
+      peopleEntry.add(SchemaConstants.OBJECT_CLASS_AT,
+          SchemaConstants.TOP_OC, SchemaConstants.ORGANIZATIONAL_UNIT_OC);
+      peopleEntry.add(SchemaConstants.OU_AT,
+          "people");
+      directoryService.getAdminSession().add(peopleEntry);
     }
 
-    private JdbmPartition addPartition(final SchemaManager schemaManager, final DnFactory dnFactory,
-            final String partitionId, final Dn partitionDn) throws Exception {
-        JdbmPartition partition = new JdbmPartition(schemaManager, dnFactory);
-        partition.setId(partitionId);
-        partition.setSuffixDn(partitionDn);
-        partition.setPartitionPath(Files.createTempDirectory(partitionDn.toString()).toFile().toURI());
-        partition.initialize();
-        directoryService.addPartition(partition);
-        return partition;
+    Dn fooDn = dnFactory.create(LdapTestConstants.CN_FOO);
+    if (!directoryService.getAdminSession().exists(fooDn)) {
+      Entry fooEntry = directoryService.newEntry(fooDn);
+      fooEntry.add(SchemaConstants.OBJECT_CLASS_AT,
+          SchemaConstants.TOP_OC, SchemaConstants.PERSON_OC,
+          SchemaConstants.ORGANIZATIONAL_PERSON_OC,
+          SchemaConstants.INET_ORG_PERSON_OC);
+      fooEntry.add(SchemaConstants.CN_AT, "foo");
+      fooEntry.add(SchemaConstants.SN_AT, "Foo");
+      fooEntry.add("mail", LdapTestConstants.FOO_MAIL);
+      fooEntry.add(SchemaConstants.USER_PASSWORD_AT, LdapTestConstants.FOO_CREDENTIAL);
+      directoryService.getAdminSession().add(fooEntry);
     }
 
-    private void checkLdapEntries() {
-        lookup(LdapTestConstants.O_SEVEN_SEAS);
-        lookup(LdapTestConstants.OU_PEOPLE);
-        lookup(LdapTestConstants.CN_FOO);
-    }
+    ldapServer = new LdapServer();
+    ldapServer.setDirectoryService(directoryService);
 
-    @Deactivate
-    public void deactivate() throws Exception {
-        ldapServer.stop();
-        directoryService.shutdown();
-        logService.log(LogService.LOG_WARNING, "Waiting 35 seconds for the UnorderedThreadPoolExecutor to shutdown"
-                + " gracefully, it was instantiated in the LdapServer.start() method"
-                + " with default keep alive 30 seconds.");
-        Thread.sleep(35000);
-    }
+    Transport ldapTransport = new TcpTransport(0);
+    ldapServer.setTransports(ldapTransport);
 
-    @Override
-    public int getPort() {
+    ldapServer.start();
+
+    port = getTcpTransportPort();
+
+    checkLdapEntries();
+  }
+
+  private void addIndex(final JdbmPartition partition, final String... attrs) {
+    Set<Index<?, String>> indexedAttributes = new HashSet<Index<?, String>>();
+    for (String attribute : attrs) {
+      indexedAttributes.add(new JdbmIndex<String>(attribute, false));
+    }
+    partition.setIndexedAttributes(indexedAttributes);
+  }
+
+  private JdbmPartition addPartition(final SchemaManager schemaManager, final DnFactory dnFactory,
+      final String partitionId, final Dn partitionDn) throws Exception {
+    JdbmPartition partition = new JdbmPartition(schemaManager, dnFactory);
+    partition.setId(partitionId);
+    partition.setSuffixDn(partitionDn);
+    partition.setPartitionPath(Files.createTempDirectory(partitionDn.toString()).toFile().toURI());
+    partition.initialize();
+    directoryService.addPartition(partition);
+    return partition;
+  }
+
+  private void checkLdapEntries() {
+    lookup(LdapTestConstants.O_SEVEN_SEAS);
+    lookup(LdapTestConstants.OU_PEOPLE);
+    lookup(LdapTestConstants.CN_FOO);
+  }
+
+  @Deactivate
+  public void deactivate() throws Exception {
+    ldapServer.stop();
+    directoryService.shutdown();
+    logService.log(LogService.LOG_WARNING,
+        "Waiting 35 seconds for the UnorderedThreadPoolExecutor to shutdown"
+            + " gracefully, it was instantiated in the LdapServer.start() method"
+            + " with default keep alive 30 seconds.");
+    Thread.sleep(35000);
+  }
+
+  @Override
+  public int getPort() {
+    return port;
+  }
+
+  private int getTcpTransportPort() {
+    Transport[] transports = ldapServer.getTransports();
+    for (Transport transport : transports) {
+      if (transport instanceof TcpTransport) {
+        TcpTransport tcpTransport = (TcpTransport) transport;
+        SocketAcceptor socketAcceptor = tcpTransport.getAcceptor();
+        InetSocketAddress localAddress = socketAcceptor.getLocalAddress();
+        int port = localAddress.getPort();
         return port;
+      }
     }
+    throw new IllegalStateException("Ldap port is not defined!");
+  }
 
-    private int getTcpTransportPort() {
-        Transport[] transports = ldapServer.getTransports();
-        for (Transport transport : transports) {
-            if (transport instanceof TcpTransport) {
-                TcpTransport tcpTransport = (TcpTransport) transport;
-                SocketAcceptor socketAcceptor = tcpTransport.getAcceptor();
-                InetSocketAddress localAddress = socketAcceptor.getLocalAddress();
-                int port = localAddress.getPort();
-                return port;
-            }
-        }
-        throw new IllegalStateException("Ldap port is not defined!");
+  private void lookup(final String rdn) {
+    try {
+      Entry result = directoryService.getAdminSession().lookup(new Dn(rdn));
+      Assert.assertNotNull(result);
+      logService.log(LogService.LOG_INFO, result.toString());
+    } catch (LdapException e) {
+      Assert.fail(e.getMessage());
     }
+  }
 
-    private void lookup(final String rdn) {
-        try {
-            Entry result = directoryService.getAdminSession().lookup(new Dn(rdn));
-            Assert.assertNotNull(result);
-            logService.log(LogService.LOG_INFO, result.toString());
-        } catch (LdapException e) {
-            Assert.fail(e.getMessage());
-        }
-    }
-
-    public void setLogService(final LogService logService) {
-        this.logService = logService;
-    }
+  public void setLogService(final LogService logService) {
+    this.logService = logService;
+  }
 
 }
