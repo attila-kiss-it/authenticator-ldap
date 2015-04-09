@@ -15,6 +15,9 @@
  */
 package org.everit.osgi.authenticator.ldap.tests;
 
+/**
+ * Constants used for AD testing.
+ */
 public final class LdapTestConstants {
 
   public static final String CN_FOO = "cn=foo,ou=people,o=sevenSeas";

@@ -23,13 +23,15 @@ public final class LdapAuthenticatorConstants {
   public static final String DEFAULT_SERVICE_DESCRIPTION_LDAP_AUTHENTICATOR =
       "Default LDAP Authenticator Component";
 
+  public static final String PROP_LDAP_URL = "ldapUrl";
+
   public static final String PROP_LOG_SERVICE = "logService.target";
+
+  public static final String PROP_SSL_ENABLED = "sslEnabled";
 
   public static final String PROP_SYSTEM_USER_DN = "systemUserDn";
 
   public static final String PROP_SYSTEM_USER_PASSWORD = "systemUserPassword";
-
-  public static final String PROP_URL = "url";
 
   public static final String PROP_USER_BASE_DN = "userBaseDn";
 

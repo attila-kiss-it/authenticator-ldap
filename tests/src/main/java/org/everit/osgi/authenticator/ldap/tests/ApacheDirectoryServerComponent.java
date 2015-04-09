@@ -27,6 +27,7 @@ import net.sf.ehcache.config.CacheConfiguration;
 import org.apache.directory.api.ldap.model.constants.SchemaConstants;
 import org.apache.directory.api.ldap.model.entry.Entry;
 import org.apache.directory.api.ldap.model.exception.LdapException;
+import org.apache.directory.api.ldap.model.exception.LdapInvalidDnException;
 import org.apache.directory.api.ldap.model.name.Dn;
 import org.apache.directory.api.ldap.model.schema.SchemaManager;
 import org.apache.directory.api.ldap.schemamanager.impl.DefaultSchemaManager;
@@ -55,12 +56,18 @@ import org.apache.mina.transport.socket.SocketAcceptor;
 import org.junit.Assert;
 import org.osgi.service.log.LogService;
 
+/**
+ * Test AD component.
+ */
 @Component(name = "ApacheDirectoryServer", immediate = true)
 @Properties({
-    @Property(name = "logService.target")
-})
+    @Property(name = "logService.target") })
 @Service
 public class ApacheDirectoryServerComponent implements LdapPortProvider {
+
+  private static final int CACHE_SIZE = 100;
+
+  private static final int SLEEP_TIME = 35000;
 
   private DirectoryService directoryService;
 
@@ -71,6 +78,9 @@ public class ApacheDirectoryServerComponent implements LdapPortProvider {
 
   private int port;
 
+  /**
+   * Initializes and starts the test AD.
+   */
   @Activate
   public void activate() throws Exception {
     // Initialize the LDAP service
@@ -91,7 +101,7 @@ public class ApacheDirectoryServerComponent implements LdapPortProvider {
     SchemaManager schemaManager = new DefaultSchemaManager();
     directoryService.setSchemaManager(schemaManager);
 
-    Cache dnCache = new Cache(new CacheConfiguration("wrapped", 100));
+    Cache dnCache = new Cache(new CacheConfiguration("wrapped", CACHE_SIZE));
     CacheManager cacheManager = CacheManager.newInstance();
     dnCache.setCacheManager(cacheManager);
     dnCache.initialise();
@@ -114,42 +124,11 @@ public class ApacheDirectoryServerComponent implements LdapPortProvider {
 
     directoryService.startup();
 
-    Dn sevenSeasDn = dnFactory.create(LdapTestConstants.O_SEVEN_SEAS);
-    JdbmPartition sevenSeasPartition = addPartition(schemaManager, dnFactory, "sevenSeas",
-        sevenSeasDn);
-    addIndex(sevenSeasPartition, "mail");
-    if (!directoryService.getAdminSession().exists(sevenSeasDn)) {
-      Entry sevenSeasEntry = directoryService.newEntry(sevenSeasDn);
-      sevenSeasEntry.add(SchemaConstants.OBJECT_CLASS_AT,
-          SchemaConstants.TOP_OC, SchemaConstants.ORGANIZATION_OC);
-      sevenSeasEntry.add(SchemaConstants.O_AT,
-          "sevenSeas");
-      directoryService.getAdminSession().add(sevenSeasEntry);
-    }
+    initSevenSeas(schemaManager, dnFactory);
 
-    Dn peopleDn = dnFactory.create(LdapTestConstants.OU_PEOPLE);
-    if (!directoryService.getAdminSession().exists(peopleDn)) {
-      Entry peopleEntry = directoryService.newEntry(peopleDn);
-      peopleEntry.add(SchemaConstants.OBJECT_CLASS_AT,
-          SchemaConstants.TOP_OC, SchemaConstants.ORGANIZATIONAL_UNIT_OC);
-      peopleEntry.add(SchemaConstants.OU_AT,
-          "people");
-      directoryService.getAdminSession().add(peopleEntry);
-    }
+    initPeople(dnFactory);
 
-    Dn fooDn = dnFactory.create(LdapTestConstants.CN_FOO);
-    if (!directoryService.getAdminSession().exists(fooDn)) {
-      Entry fooEntry = directoryService.newEntry(fooDn);
-      fooEntry.add(SchemaConstants.OBJECT_CLASS_AT,
-          SchemaConstants.TOP_OC, SchemaConstants.PERSON_OC,
-          SchemaConstants.ORGANIZATIONAL_PERSON_OC,
-          SchemaConstants.INET_ORG_PERSON_OC);
-      fooEntry.add(SchemaConstants.CN_AT, "foo");
-      fooEntry.add(SchemaConstants.SN_AT, "Foo");
-      fooEntry.add("mail", LdapTestConstants.FOO_MAIL);
-      fooEntry.add(SchemaConstants.USER_PASSWORD_AT, LdapTestConstants.FOO_CREDENTIAL);
-      directoryService.getAdminSession().add(fooEntry);
-    }
+    initFoo(dnFactory);
 
     ldapServer = new LdapServer();
     ldapServer.setDirectoryService(directoryService);
@@ -189,6 +168,9 @@ public class ApacheDirectoryServerComponent implements LdapPortProvider {
     lookup(LdapTestConstants.CN_FOO);
   }
 
+  /**
+   * Stops the test AD.
+   */
   @Deactivate
   public void deactivate() throws Exception {
     ldapServer.stop();
@@ -197,7 +179,7 @@ public class ApacheDirectoryServerComponent implements LdapPortProvider {
         "Waiting 35 seconds for the UnorderedThreadPoolExecutor to shutdown"
             + " gracefully, it was instantiated in the LdapServer.start() method"
             + " with default keep alive 30 seconds.");
-    Thread.sleep(35000);
+    Thread.sleep(SLEEP_TIME);
   }
 
   @Override
@@ -217,6 +199,50 @@ public class ApacheDirectoryServerComponent implements LdapPortProvider {
       }
     }
     throw new IllegalStateException("Ldap port is not defined!");
+  }
+
+  private void initFoo(final DnFactory dnFactory) throws LdapInvalidDnException, LdapException {
+    Dn fooDn = dnFactory.create(LdapTestConstants.CN_FOO);
+    if (!directoryService.getAdminSession().exists(fooDn)) {
+      Entry fooEntry = directoryService.newEntry(fooDn);
+      fooEntry.add(SchemaConstants.OBJECT_CLASS_AT,
+          SchemaConstants.TOP_OC, SchemaConstants.PERSON_OC,
+          SchemaConstants.ORGANIZATIONAL_PERSON_OC,
+          SchemaConstants.INET_ORG_PERSON_OC);
+      fooEntry.add(SchemaConstants.CN_AT, "foo");
+      fooEntry.add(SchemaConstants.SN_AT, "Foo");
+      fooEntry.add("mail", LdapTestConstants.FOO_MAIL);
+      fooEntry.add(SchemaConstants.USER_PASSWORD_AT, LdapTestConstants.FOO_CREDENTIAL);
+      directoryService.getAdminSession().add(fooEntry);
+    }
+  }
+
+  private void initPeople(final DnFactory dnFactory) throws LdapInvalidDnException, LdapException {
+    Dn peopleDn = dnFactory.create(LdapTestConstants.OU_PEOPLE);
+    if (!directoryService.getAdminSession().exists(peopleDn)) {
+      Entry peopleEntry = directoryService.newEntry(peopleDn);
+      peopleEntry.add(SchemaConstants.OBJECT_CLASS_AT,
+          SchemaConstants.TOP_OC, SchemaConstants.ORGANIZATIONAL_UNIT_OC);
+      peopleEntry.add(SchemaConstants.OU_AT,
+          "people");
+      directoryService.getAdminSession().add(peopleEntry);
+    }
+  }
+
+  private void initSevenSeas(final SchemaManager schemaManager, final DnFactory dnFactory)
+      throws LdapInvalidDnException, Exception, LdapException {
+    Dn sevenSeasDn = dnFactory.create(LdapTestConstants.O_SEVEN_SEAS);
+    JdbmPartition sevenSeasPartition = addPartition(schemaManager, dnFactory, "sevenSeas",
+        sevenSeasDn);
+    addIndex(sevenSeasPartition, "mail");
+    if (!directoryService.getAdminSession().exists(sevenSeasDn)) {
+      Entry sevenSeasEntry = directoryService.newEntry(sevenSeasDn);
+      sevenSeasEntry.add(SchemaConstants.OBJECT_CLASS_AT,
+          SchemaConstants.TOP_OC, SchemaConstants.ORGANIZATION_OC);
+      sevenSeasEntry.add(SchemaConstants.O_AT,
+          "sevenSeas");
+      directoryService.getAdminSession().add(sevenSeasEntry);
+    }
   }
 
   private void lookup(final String rdn) {

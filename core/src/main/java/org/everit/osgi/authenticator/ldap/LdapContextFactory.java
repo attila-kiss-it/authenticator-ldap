@@ -13,9 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.everit.osgi.authenticator.ldap.internal;
+package org.everit.osgi.authenticator.ldap;
 
+import java.util.HashMap;
 import java.util.Hashtable;
+import java.util.Map;
 
 import javax.naming.AuthenticationException;
 import javax.naming.Context;
@@ -24,9 +26,10 @@ import javax.naming.ldap.InitialLdapContext;
 import javax.naming.ldap.LdapContext;
 
 /**
- * Factory class to authenticate users based on the configured LDAP protocol.
+ * Factory for creating {@link LdapContext} and authenticate users based on the configured LDAP
+ * protocol.
  */
-public class InitialLdapContextFactory {
+public class LdapContextFactory {
 
   private static final String DEFAULT_CONNECTION_POOLING_ENV_PROP =
       "com.sun.jndi.ldap.connect.pool";
@@ -45,27 +48,48 @@ public class InitialLdapContextFactory {
 
   private static final String SIMPLE_AUTHENTICATION_MECHANISM = "simple";
 
+  private static final String SSL = "ssl";
+
+  private final Map<String, Object> additionalEnvironment = new HashMap<String, Object>();
+
+  private final String ldapUrl;
+
+  private final boolean sslEnabled;
+
   private final String systemUserDn;
 
   private final String systemUserPassword;
 
-  private final String url;
-
   /**
    * Constructor.
+   *
+   * @param sslEnabled
+   *          SSL security protocol used or not
+   * @param ldapUrl
+   *          the LDAP URL to connect to
+   * @param systemUserDn
+   *          the DN of the system user
+   * @param systemUserPassword
+   *          the password of the system user
+   * @param additionalEnvironment
+   *          additional environment properties that may override default settings
    */
-  public InitialLdapContextFactory(final String url, final String systemUserDn,
-      final String systemUserPassword) {
-    this.url = url;
+  public LdapContextFactory(final boolean sslEnabled, final String ldapUrl,
+      final String systemUserDn, final String systemUserPassword,
+      final Map<String, Object> additionalEnvironment) {
+    this.sslEnabled = sslEnabled;
+    this.ldapUrl = ldapUrl;
     this.systemUserDn = systemUserDn;
     this.systemUserPassword = systemUserPassword;
+    if (additionalEnvironment != null) {
+      this.additionalEnvironment.putAll(additionalEnvironment);
+    }
   }
 
-  private Hashtable<String, Object> createEnvironment(
-      final String userDn, final String userPassword)
-      throws AuthenticationException {
+  private Hashtable<String, Object> createEnvironment(final String userDn,
+      final String userPassword) throws AuthenticationException {
     Hashtable<String, Object> environment = new Hashtable<>();
-    environment.put(Context.PROVIDER_URL, url);
+    environment.put(Context.PROVIDER_URL, ldapUrl);
     environment.put(Context.SECURITY_AUTHENTICATION, SIMPLE_AUTHENTICATION_MECHANISM);
     environment.put(Context.SECURITY_PRINCIPAL, userDn);
     environment.put(Context.SECURITY_CREDENTIALS, userPassword);
@@ -73,6 +97,10 @@ public class InitialLdapContextFactory {
     environment.put(DEFAULT_LDAP_READ_TIMEOUT_ENV_PROP, DEFAULT_TIMEOUT_MS);
     environment.put(Context.REFERRAL, REFERRAL_FOLLOW);
     environment.put(DEFAULT_CONNECTION_POOLING_ENV_PROP, DEFAULT_POOLING_ENABLED);
+    if (sslEnabled) {
+      environment.put(Context.SECURITY_PROTOCOL, SSL);
+    }
+    environment.putAll(additionalEnvironment);
     return environment;
   }
 

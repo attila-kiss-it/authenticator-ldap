@@ -34,6 +34,7 @@ import org.apache.felix.scr.annotations.Reference;
 import org.apache.felix.scr.annotations.Service;
 import org.everit.osgi.authenticator.Authenticator;
 import org.everit.osgi.authenticator.ldap.LdapAuthenticatorConstants;
+import org.everit.osgi.authenticator.ldap.LdapContextFactory;
 import org.osgi.framework.Constants;
 import org.osgi.service.cm.ConfigurationException;
 import org.osgi.service.log.LogService;
@@ -47,14 +48,14 @@ import org.osgi.service.log.LogService;
 @Properties({
     @Property(name = Constants.SERVICE_DESCRIPTION, propertyPrivate = false,
         value = LdapAuthenticatorConstants.DEFAULT_SERVICE_DESCRIPTION_LDAP_AUTHENTICATOR),
-    @Property(name = LdapAuthenticatorConstants.PROP_URL),
+    @Property(name = LdapAuthenticatorConstants.PROP_SSL_ENABLED, boolValue = false),
+    @Property(name = LdapAuthenticatorConstants.PROP_LDAP_URL),
     @Property(name = LdapAuthenticatorConstants.PROP_SYSTEM_USER_DN),
     @Property(name = LdapAuthenticatorConstants.PROP_SYSTEM_USER_PASSWORD),
     @Property(name = LdapAuthenticatorConstants.PROP_USER_BASE_DN),
     @Property(name = LdapAuthenticatorConstants.PROP_USER_SEARCH_BASE),
     @Property(name = LdapAuthenticatorConstants.PROP_USER_DN_TEMPLATE),
-    @Property(name = LdapAuthenticatorConstants.PROP_LOG_SERVICE)
-})
+    @Property(name = LdapAuthenticatorConstants.PROP_LOG_SERVICE) })
 @Service
 public class LdapAuthenticatorComponent implements Authenticator {
 
@@ -62,7 +63,7 @@ public class LdapAuthenticatorComponent implements Authenticator {
   // substitution techniques.
   private static final String SUBSTITUTION_TOKEN = "{0}";
 
-  private InitialLdapContextFactory initialLdapContextFactory;
+  private LdapContextFactory ldapContextFactory;
 
   @Reference(bind = "setLogService")
   private LogService logService;
@@ -81,8 +82,10 @@ public class LdapAuthenticatorComponent implements Authenticator {
   @Activate
   public void activate(final Map<String, Object> componentProperties)
       throws ConfigurationException {
-    String url = getStringProperty(
-        componentProperties, LdapAuthenticatorConstants.PROP_URL);
+    boolean sslEnabled = (boolean)
+        componentProperties.get(LdapAuthenticatorConstants.PROP_SSL_ENABLED);
+    String ldapUrl = getStringProperty(
+        componentProperties, LdapAuthenticatorConstants.PROP_LDAP_URL);
     String systemUserDn = getStringProperty(
         componentProperties, LdapAuthenticatorConstants.PROP_SYSTEM_USER_DN);
     String systemUserPassword = getStringProperty(
@@ -95,8 +98,8 @@ public class LdapAuthenticatorComponent implements Authenticator {
         componentProperties, LdapAuthenticatorConstants.PROP_USER_DN_TEMPLATE);
     initUserDnPrefixAndSuffix(userDnTemplate);
 
-    initialLdapContextFactory =
-        new InitialLdapContextFactory(url, systemUserDn, systemUserPassword);
+    ldapContextFactory =
+        new LdapContextFactory(sslEnabled, ldapUrl, systemUserDn, systemUserPassword, null);
   }
 
   @Override
@@ -106,7 +109,7 @@ public class LdapAuthenticatorComponent implements Authenticator {
       String userDn = userDnPrefix + cn + userDnSuffix;
 
       // if the LdapContext is created successfully, then the user is authenticated
-      initialLdapContextFactory.createLdapContext(userDn, credential);
+      ldapContextFactory.createLdapContext(userDn, credential);
 
       return Optional.of(userDn);
     } catch (NamingException e) {
@@ -145,7 +148,7 @@ public class LdapAuthenticatorComponent implements Authenticator {
     LdapContext systemLdapContext = null;
     NamingEnumeration<SearchResult> namingEnumeration = null;
     try {
-      systemLdapContext = initialLdapContextFactory.createSystemLdapContext();
+      systemLdapContext = ldapContextFactory.createSystemLdapContext();
       namingEnumeration = systemLdapContext.search(userBaseDn, userSearchBase,
           new Object[] { principal }, null);
       if (!namingEnumeration.hasMoreElements()) {

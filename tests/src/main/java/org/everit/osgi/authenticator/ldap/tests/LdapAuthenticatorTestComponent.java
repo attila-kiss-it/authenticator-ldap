@@ -27,6 +27,9 @@ import org.everit.osgi.dev.testrunner.TestRunnerConstants;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * Integration test component of the LdapAuthenticatorComponent.
+ */
 @Component(name = "LdapAuthenticatorTest", immediate = true)
 @Properties({
     @Property(name = TestRunnerConstants.SERVICE_PROPERTY_TESTRUNNER_ENGINE_TYPE, value = "junit4"),

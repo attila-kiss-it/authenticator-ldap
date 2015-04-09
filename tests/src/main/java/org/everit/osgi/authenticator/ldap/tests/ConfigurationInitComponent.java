@@ -30,6 +30,9 @@ import org.everit.osgi.authenticator.ldap.LdapAuthenticatorConstants;
 import org.osgi.service.cm.Configuration;
 import org.osgi.service.cm.ConfigurationAdmin;
 
+/**
+ * Configures the LdapAuthenticatorComponent dynamically based on the used random port.
+ */
 @Component(name = "ConfigurationInit", immediate = true)
 @Properties({
     @Property(name = "configurationAdmin.target"),
@@ -46,13 +49,17 @@ public class ConfigurationInitComponent {
   @Reference(bind = "setLdapPortProvider")
   private LdapPortProvider ldapPortProvider;
 
+  /**
+   * Configures the LdapAuthenticatorComponent.
+   */
   @Activate
   public void activate() throws IOException {
     Configuration configuration = configurationAdmin.createFactoryConfiguration(
         LdapAuthenticatorConstants.SERVICE_FACTORYPID_LDAP_AUTHENTICATOR, null);
     ldapAuthenticatorConfigurationPid = configuration.getPid();
-    Dictionary<String, String> properties = new Hashtable<>();
-    properties.put(LdapAuthenticatorConstants.PROP_URL,
+    Dictionary<String, Object> properties = new Hashtable<>();
+    properties.put(LdapAuthenticatorConstants.PROP_SSL_ENABLED, false);
+    properties.put(LdapAuthenticatorConstants.PROP_LDAP_URL,
         "ldap://localhost:" + ldapPortProvider.getPort());
     properties.put(LdapAuthenticatorConstants.PROP_SYSTEM_USER_DN, "uid=admin,ou=system");
     properties.put(LdapAuthenticatorConstants.PROP_SYSTEM_USER_PASSWORD, "secret");
@@ -63,6 +70,9 @@ public class ConfigurationInitComponent {
     configuration.update(properties);
   }
 
+  /**
+   * Deletes the configuration of the LdapAuthenticatorComponent.
+   */
   @Deactivate
   public void deactivate() throws IOException {
     Configuration configuration = configurationAdmin

@@ -15,6 +15,9 @@
  */
 package org.everit.osgi.authenticator.ldap.tests;
 
+/**
+ * Interface to communicate the randomly selected port by the test AD.
+ */
 public interface LdapPortProvider {
 
   int getPort();
