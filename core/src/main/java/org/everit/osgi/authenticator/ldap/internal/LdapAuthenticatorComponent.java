@@ -22,6 +22,7 @@ import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
 import javax.naming.directory.Attribute;
 import javax.naming.directory.Attributes;
+import javax.naming.directory.SearchControls;
 import javax.naming.directory.SearchResult;
 import javax.naming.ldap.LdapContext;
 
@@ -144,13 +145,21 @@ public class LdapAuthenticatorComponent implements Authenticator {
     userDnSuffix = userDnTemplate.substring(userDnPrefix.length() + SUBSTITUTION_TOKEN.length());
   }
 
-  private String queryCnByPrincipal(final Object principal) throws NamingException {
+  private String queryCnByPrincipal(final String principal) throws NamingException {
     LdapContext systemLdapContext = null;
     NamingEnumeration<SearchResult> namingEnumeration = null;
     try {
       systemLdapContext = ldapContextFactory.createSystemLdapContext();
-      namingEnumeration = systemLdapContext.search(userBaseDn, userSearchBase,
-          new Object[] { principal }, null);
+
+      String[] returningAttrs = { "cn" };
+
+      SearchControls searchControls = new SearchControls();
+      searchControls.setSearchScope(SearchControls.SUBTREE_SCOPE);
+      searchControls.setReturningAttributes(returningAttrs);
+
+      String filter = userSearchBase.replace(SUBSTITUTION_TOKEN, principal);
+
+      namingEnumeration = systemLdapContext.search(userBaseDn, filter, searchControls);
       if (!namingEnumeration.hasMoreElements()) {
         throw new NamingException("No result for userBaseDn [" + userBaseDn + "] userSearchBase ["
             + userSearchBase + "] with principal [" + principal + "]");
