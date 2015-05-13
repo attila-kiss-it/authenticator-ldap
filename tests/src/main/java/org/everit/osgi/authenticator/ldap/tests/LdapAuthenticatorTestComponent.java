@@ -66,4 +66,35 @@ public class LdapAuthenticatorTestComponent {
     Assert.assertFalse(optionalMappedPrincipal.isPresent());
   }
 
+  @Test
+  public void testValidations() {
+    try {
+      authenticator.authenticate(null, null);
+      Assert.fail();
+    } catch (IllegalArgumentException e) {
+      Assert.assertTrue(e.getMessage().contains("principal cannot be null"));
+    }
+    try {
+      authenticator.authenticate(" ", null);
+      Assert.fail();
+    } catch (IllegalArgumentException e) {
+      Assert.assertTrue(e.getMessage().contains("principal cannot be empty/blank"));
+    }
+    try {
+      authenticator.authenticate("a", null);
+      Assert.fail();
+    } catch (IllegalArgumentException e) {
+      Assert.assertTrue(e.getMessage().contains("credential cannot be null"));
+    }
+    try {
+      authenticator.authenticate("a", " ");
+      Assert.fail();
+    } catch (IllegalArgumentException e) {
+      Assert.assertTrue(e.getMessage().contains("credential cannot be empty/blank"));
+    }
+
+    authenticator.authenticate("a ", "a ");
+
+  }
+
 }

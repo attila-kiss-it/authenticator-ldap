@@ -105,8 +105,11 @@ public class LdapAuthenticatorComponent implements Authenticator {
 
   @Override
   public Optional<String> authenticate(final String principal, final String credential) {
+
+    String trimmedPrincipal = validateArgs(principal, credential);
+
     try {
-      String cn = queryCnByPrincipal(principal);
+      String cn = queryCnByPrincipal(trimmedPrincipal);
       String userDn = userDnPrefix + cn + userDnSuffix;
 
       // if the LdapContext is created successfully, then the user is authenticated
@@ -192,6 +195,27 @@ public class LdapAuthenticatorComponent implements Authenticator {
 
   public void setLogService(final LogService logService) {
     this.logService = logService;
+  }
+
+  private String validateArgs(final String principal, final String credential) {
+    if (principal == null) {
+      throw new IllegalArgumentException("principal cannot be null");
+    }
+
+    String trimmedPrincipal = principal.trim();
+    if (trimmedPrincipal.isEmpty()) {
+      throw new IllegalArgumentException("principal cannot be empty/blank");
+    }
+
+    if (credential == null) {
+      throw new IllegalArgumentException("credential cannot be null");
+    }
+
+    if (credential.trim().isEmpty()) {
+      throw new IllegalArgumentException("credential cannot be empty/blank");
+    }
+
+    return trimmedPrincipal;
   }
 
 }
