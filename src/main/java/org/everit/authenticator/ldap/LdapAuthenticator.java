@@ -13,9 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.everit.osgi.authenticator.ldap.internal;
+package org.everit.authenticator.ldap;
 
-import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 import javax.naming.NamingEnumeration;
@@ -26,48 +26,22 @@ import javax.naming.directory.SearchControls;
 import javax.naming.directory.SearchResult;
 import javax.naming.ldap.LdapContext;
 
-import org.apache.felix.scr.annotations.Activate;
-import org.apache.felix.scr.annotations.Component;
-import org.apache.felix.scr.annotations.ConfigurationPolicy;
-import org.apache.felix.scr.annotations.Properties;
-import org.apache.felix.scr.annotations.Property;
-import org.apache.felix.scr.annotations.Reference;
-import org.apache.felix.scr.annotations.Service;
-import org.everit.osgi.authenticator.Authenticator;
-import org.everit.osgi.authenticator.ldap.LdapAuthenticatorConstants;
-import org.everit.osgi.authenticator.ldap.LdapContextFactory;
-import org.osgi.framework.Constants;
-import org.osgi.service.cm.ConfigurationException;
-import org.osgi.service.log.LogService;
+import org.everit.authenticator.Authenticator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * An {@link Authenticator} that authenticates users on LDAP protocol.
  */
-@Component(name = LdapAuthenticatorConstants.SERVICE_FACTORYPID_LDAP_AUTHENTICATOR,
-    metatype = true,
-    configurationFactory = true, policy = ConfigurationPolicy.REQUIRE)
-@Properties({
-    @Property(name = Constants.SERVICE_DESCRIPTION, propertyPrivate = false,
-        value = LdapAuthenticatorConstants.DEFAULT_SERVICE_DESCRIPTION_LDAP_AUTHENTICATOR),
-    @Property(name = LdapAuthenticatorConstants.PROP_SSL_ENABLED, boolValue = false),
-    @Property(name = LdapAuthenticatorConstants.PROP_LDAP_URL),
-    @Property(name = LdapAuthenticatorConstants.PROP_SYSTEM_USER_DN),
-    @Property(name = LdapAuthenticatorConstants.PROP_SYSTEM_USER_PASSWORD),
-    @Property(name = LdapAuthenticatorConstants.PROP_USER_BASE_DN),
-    @Property(name = LdapAuthenticatorConstants.PROP_USER_SEARCH_BASE),
-    @Property(name = LdapAuthenticatorConstants.PROP_USER_DN_TEMPLATE),
-    @Property(name = LdapAuthenticatorConstants.PROP_LOG_SERVICE) })
-@Service
-public class LdapAuthenticatorComponent implements Authenticator {
+public class LdapAuthenticator implements Authenticator {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(LdapAuthenticator.class);
 
   // The zero index currently means nothing, but could be utilized in the future for other
   // substitution techniques.
   private static final String SUBSTITUTION_TOKEN = "{0}";
 
   private LdapContextFactory ldapContextFactory;
-
-  @Reference(bind = "setLogService")
-  private LogService logService;
 
   private String userBaseDn;
 
@@ -78,27 +52,37 @@ public class LdapAuthenticatorComponent implements Authenticator {
   private String userSearchBase;
 
   /**
-   * Initializes the OSGi component based on the component configuration.
+   * Constructor that initializes class.
+   *
+   * @param sslEnabled
+   *          SSL security protocol used or not.
+   * @param ldapUrl
+   *          the LDAP URL to connect to
+   * @param systemUserDn
+   *          the DN of the system user.
+   * @param systemUserPassword
+   *          the password of the system user
+   * @param userBaseDn
+   *          the base DN of the users to search for. (e.g. ou=people,o=sevenSeas).
+   * @param userSearchBase
+   *          the filter expression to use for the search. Must contain exactly one substitution
+   *          token '{0}' that will be replaced by the users principal. (e.g. mail={0}).
+   * @param userDnTemplate
+   *          the DN template used to create user DN if its authentication succeeds. Must contain
+   *          exactly one substitution token '{0}' that will be replaced by the CN of the
+   *          authenticated user. (e.g. cn={0},ou=people,o=sevenSeas).
    */
-  @Activate
-  public void activate(final Map<String, Object> componentProperties)
-      throws ConfigurationException {
-    boolean sslEnabled = (boolean)
-        componentProperties.get(LdapAuthenticatorConstants.PROP_SSL_ENABLED);
-    String ldapUrl = getStringProperty(
-        componentProperties, LdapAuthenticatorConstants.PROP_LDAP_URL);
-    String systemUserDn = getStringProperty(
-        componentProperties, LdapAuthenticatorConstants.PROP_SYSTEM_USER_DN);
-    String systemUserPassword = getStringProperty(
-        componentProperties, LdapAuthenticatorConstants.PROP_SYSTEM_USER_PASSWORD);
-    userBaseDn = getStringProperty(
-        componentProperties, LdapAuthenticatorConstants.PROP_USER_BASE_DN);
-    userSearchBase = getStringProperty(
-        componentProperties, LdapAuthenticatorConstants.PROP_USER_SEARCH_BASE);
-    String userDnTemplate = getStringProperty(
-        componentProperties, LdapAuthenticatorConstants.PROP_USER_DN_TEMPLATE);
+  public LdapAuthenticator(final boolean sslEnabled, final String ldapUrl,
+      final String systemUserDn, final String systemUserPassword, final String userBaseDn,
+      final String userSearchBase, final String userDnTemplate) {
+    this.userBaseDn = Objects.requireNonNull(userBaseDn, "userBaseDn cannot be null");
+    this.userSearchBase = Objects.requireNonNull(userSearchBase, "userSearchBase cannot be null");
+    Objects.requireNonNull(userDnTemplate, "userDnTemplate cannot be null");
     initUserDnPrefixAndSuffix(userDnTemplate);
 
+    Objects.requireNonNull(ldapUrl, "userDnTemplate cannot be null");
+    Objects.requireNonNull(systemUserDn, "userDnTemplate cannot be null");
+    Objects.requireNonNull(systemUserPassword, "userDnTemplate cannot be null");
     ldapContextFactory =
         new LdapContextFactory(sslEnabled, ldapUrl, systemUserDn, systemUserPassword, null);
   }
@@ -117,19 +101,9 @@ public class LdapAuthenticatorComponent implements Authenticator {
 
       return Optional.of(userDn);
     } catch (NamingException e) {
-      logService.log(LogService.LOG_WARNING, "Failed to query cn", e);
+      LOGGER.warn("Failed to query cn", e);
       return Optional.empty();
     }
-  }
-
-  private String getStringProperty(final Map<String, Object> componentProperties,
-      final String propertyName)
-      throws ConfigurationException {
-    Object value = componentProperties.get(propertyName);
-    if (value == null) {
-      throw new ConfigurationException(propertyName, "property not defined");
-    }
-    return String.valueOf(value);
   }
 
   private void initUserDnPrefixAndSuffix(final String userDnTemplate)
@@ -181,20 +155,16 @@ public class LdapAuthenticatorComponent implements Authenticator {
           systemLdapContext.close();
         }
       } catch (NamingException e) {
-        logService.log(LogService.LOG_ERROR, "Exception while closing LDAP context. ", e);
+        LOGGER.error("Exception while closing LDAP context. ", e);
       }
       try {
         if (namingEnumeration != null) {
           namingEnumeration.close();
         }
       } catch (Exception e) {
-        logService.log(LogService.LOG_ERROR, "Failed to close naming enumeration", e);
+        LOGGER.error("Failed to close naming enumeration", e);
       }
     }
-  }
-
-  public void setLogService(final LogService logService) {
-    this.logService = logService;
   }
 
   private String validateArgs(final String principal, final String credential) {
