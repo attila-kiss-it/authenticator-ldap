@@ -71,6 +71,8 @@ public class LdapAuthenticator implements Authenticator {
    *          the DN template used to create user DN if its authentication succeeds. Must contain
    *          exactly one substitution token '{0}' that will be replaced by the CN of the
    *          authenticated user. (e.g. cn={0},ou=people,o=sevenSeas).
+   * @throws NullPointerException
+   *           if one of the parameter is <code>null</code>.
    */
   public LdapAuthenticator(final boolean sslEnabled, final String ldapUrl,
       final String systemUserDn, final String systemUserPassword, final String userBaseDn,
