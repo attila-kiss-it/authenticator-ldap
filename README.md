@@ -1,4 +1,4 @@
 authenticator-ldap
 ==================
 
-Documentation: http://wwww.everit.org/authenticator-ldap
+Documentation: http://www.everit.org/authenticator-ldap
